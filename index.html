@@ -463,7 +463,7 @@ input, select, button, textarea { font-family: var(--head); }
       <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
         <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
           <div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Paste transaction description</div>
-          <input id="cat-desc-input" placeholder="e.g. KADERXAC021050 or BEX CRAIGHALL" style="width:100%;background:transparent;border:none;font-size:15px;color:var(--txt);outline:none;font-family:var(--head)">
+          <input id="cat-desc-input" placeholder="e.g. DISC PREM or BEX CRAIGHALL" style="width:100%;background:transparent;border:none;font-size:15px;color:var(--txt);outline:none;font-family:var(--head)">
         </div>
         <button onclick="runCategorise()" style="width:100%;background:var(--acc-bg);color:var(--accent);border:none;padding:13px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 010 2h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2v-1H2a1 1 0 010-2h1a7 7 0 017-7h1V5.73A2 2 0 0110 4a2 2 0 012-2z"/></svg>
@@ -774,7 +774,7 @@ function renderOverview(){
     document.getElementById("ov-hero-wrap").innerHTML=`
       <div style="margin:16px;background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px 20px;text-align:center">
         <div style="font-size:32px;margin-bottom:12px">👋</div>
-        <div style="font-size:17px;font-weight:700;margin-bottom:8px">Welcome, Sheraaz</div>
+        <div style="font-size:17px;font-weight:700;margin-bottom:8px">Welcome back</div>
         <div style="font-size:14px;color:var(--txt2);line-height:1.6;margin-bottom:16px">Your Phase 1 budget is loaded and ready. Start logging transactions or import your bank statement to compare spending.</div>
         <button class="btn-log" style="width:auto;padding:12px 24px" onclick="goPage('log')">Log a transaction →</button>
       </div>`;
@@ -1348,7 +1348,7 @@ function getBudgetContext(){
 - Total spent so far: R${Math.round(actualTotal).toLocaleString("en-ZA")}
 - Remaining budget: R${Math.round(budgetTotal-actualTotal).toLocaleString("en-ZA")}
 - MacBook Air savings goal: R26,000 total, R${Math.round(laptopSaved).toLocaleString("en-ZA")} saved so far
-- Debt: Incredible Connection R11,000 (priority 1), Discovery CC R24,000 (priority 2), Mobicred R30,000 (priority 3), FNB CC R16,000 (priority 4) — using avalanche method
+- Debt: 4 accounts totalling R81,000 — using avalanche method (see category breakdown above)
 - Phase: Phase 1 — saving for MacBook Air cash purchase, pausing emergency savings temporarily
 
 BUDGET CATEGORIES:
