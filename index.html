@@ -495,7 +495,7 @@ input, select, button, textarea { font-family: var(--head); }
         <div id="debt-rows"></div>
         <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:13px">
           <span style="color:var(--txt2);font-weight:500">Total debt</span>
-          <span style="font-weight:700;font-family:var(--mono)" id="debt-total-display">R81,000</span>
+          <span style="font-weight:700;font-family:var(--mono)" id="debt-total-display">R84,900</span>
         </div>
       </div>
 
@@ -580,6 +580,24 @@ input, select, button, textarea { font-family: var(--head); }
         <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:3px">How to read this</div>
         <div style="font-size:12px;color:var(--txt2);line-height:1.6">Each phase shows what you pay to each account. The highlighted account is receiving your extra repayment. When it clears, all that money snowballs to the next account.</div>
       </div>
+    </div>
+
+    <!-- WINDFALL SIMULATOR -->
+    <div class="sec">Windfall simulator</div>
+    <div style="padding:0 16px">
+      <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:10px">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);background:#EDFBF1">
+          <div style="font-size:13px;font-weight:600;color:var(--green)">Add a lump sum payment</div>
+          <div style="font-size:12px;color:var(--txt2);margin-top:2px">See how any extra money affects your debt-free date</div>
+        </div>
+        <div id="windfall-rows"></div>
+        <button onclick="addWindfallRow()" style="width:100%;background:transparent;color:var(--accent);border:none;border-top:1px solid var(--border);padding:13px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add another windfall
+        </button>
+      </div>
+      <button onclick="runWindfall()" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-lg);padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px">Calculate impact</button>
+      <div id="windfall-results" style="display:none"></div>
     </div>
 
     <div style="height:20px"></div>
@@ -1320,6 +1338,7 @@ function goPage(p){
     document.getElementById("cat-result").style.display="none";
     renderDebtRows();
     renderSchedule();
+    renderWindfallRows();
   }
 }
 
@@ -1348,7 +1367,7 @@ function getBudgetContext(){
 - Total spent so far: R${Math.round(actualTotal).toLocaleString("en-ZA")}
 - Remaining budget: R${Math.round(budgetTotal-actualTotal).toLocaleString("en-ZA")}
 - MacBook Air savings goal: R26,000 total, R${Math.round(laptopSaved).toLocaleString("en-ZA")} saved so far
-- Debt: 4 accounts totalling R81,000 — using avalanche method (see category breakdown above)
+- Debt: 4 accounts totalling R84,900 — using avalanche method (see category breakdown above)
 - Phase: Phase 1 — saving for MacBook Air cash purchase, pausing emergency savings temporarily
 
 BUDGET CATEGORIES:
@@ -1500,7 +1519,7 @@ Context: This is a South African bank account. Common patterns: DISC PREM = Disc
 
 // ── DEBT CONSOLIDATION CALCULATOR ──
 let DEBTS = [
-  {name:"Incredible Connection", balance:11000, rate:20,  minPmt:1100, priority:1},
+  {name:"Incredible Connection", balance:14900, rate:27.75,minPmt:1100, priority:1},
   {name:"Discovery Credit Card", balance:24000, rate:21,  minPmt:900,  priority:2},
   {name:"Mobicred",              balance:30000, rate:22,  minPmt:1800, priority:3},
   {name:"FNB Credit Card",       balance:16000, rate:20,  minPmt:990,  priority:4},
@@ -1513,7 +1532,7 @@ function renderSchedule(){
   // Run avalanche simulation month by month
   const extra = 1820;
   let debts = DEBTS.map(d=>({...d, balance:d.balance}));
-  const priority = [...debts].sort((a,b)=>a.priority-b.priority).map(d=>d.name);
+  const priority = [...debts].sort((a,b)=>b.rate-a.rate).map(d=>d.name);
   let months = 0, totalInterest = 0;
   const clearance = {}, phases = [];
   let currentPhase = null, prevTotal = null;
@@ -1522,12 +1541,13 @@ function renderSchedule(){
     months++;
     let remaining = extra;
 
-    // Interest
+    // Interest + service fee
     debts.forEach(d=>{
       if(d.balance<=0) return;
       const int = d.balance*(d.rate/100/12);
+      const fee = d.name==="Incredible Connection" ? 60 : 0;
       totalInterest += int;
-      d.balance += int;
+      d.balance += int + fee;
     });
 
     // Min payments
@@ -1655,8 +1675,9 @@ function calcAvalanche(){
     debts.forEach(d=>{
       if(d.balance<=0) return;
       const interest = d.balance * (d.rate/100/12);
+      const fee = d.name==="Incredible Connection" ? 60 : 0;
       totalInterest += interest;
-      d.balance += interest;
+      d.balance += interest + fee;
       const pmt = Math.min(d.minPmt, d.balance);
       d.balance -= pmt;
       if(d.balance<0) d.balance=0;
@@ -1770,6 +1791,160 @@ Should I consolidate with FNB? Give me a direct recommendation with your reasoni
     );
     showAIResponse("Consolidation advisor", text);
   }catch(e){showAIResponse("Error","Could not connect to Claude. " + e.message);}
+}
+
+// ── WINDFALL SIMULATOR ──
+let windfallRows = [{id:1, month:1, amount:2000, account:"Incredible Connection"}];
+let windfallNextId = 2;
+
+function renderWindfallRows(){
+  const el = document.getElementById("windfall-rows");
+  if(!el) return;
+  const acctOptions = DEBTS.map(d=>`<option value="${d.name}">${d.name}</option>`).join("");
+  el.innerHTML = windfallRows.map(row=>`
+    <div style="display:grid;grid-template-columns:80px 1fr 1fr auto;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);align-items:center" id="wfrow-${row.id}">
+      <div>
+        <div style="font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Month</div>
+        <input type="number" inputmode="numeric" min="1" max="24" value="${row.month}"
+          style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:7px 8px;font-size:14px;font-weight:700;text-align:center;font-family:var(--mono);outline:none"
+          oninput="updateWindfall(${row.id},'month',parseInt(this.value)||1)">
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Amount (R)</div>
+        <input type="number" inputmode="decimal" min="0" value="${row.amount}"
+          style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:7px 8px;font-size:14px;font-weight:700;font-family:var(--mono);outline:none"
+          oninput="updateWindfall(${row.id},'amount',parseFloat(this.value)||0)">
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Account</div>
+        <select style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:7px 8px;font-size:12px;color:var(--txt);outline:none;-webkit-appearance:none"
+          onchange="updateWindfall(${row.id},'account',this.value)">
+          ${DEBTS.map(d=>`<option value="${d.name}"${d.name===row.account?" selected":""}>${d.name.split(" ")[0]}</option>`).join("")}
+        </select>
+      </div>
+      <button onclick="removeWindfall(${row.id})" style="background:var(--rbg);color:var(--red);border:none;border-radius:var(--radius);padding:6px 10px;cursor:pointer;font-size:16px;margin-top:18px">×</button>
+    </div>`).join("");
+}
+
+function addWindfallRow(){
+  windfallRows.push({id:windfallNextId++, month:3, amount:9000, account:"Discovery Credit Card"});
+  renderWindfallRows();
+}
+
+function removeWindfall(id){
+  if(windfallRows.length<=1){showToast("Keep at least one windfall");return;}
+  windfallRows = windfallRows.filter(r=>r.id!==id);
+  renderWindfallRows();
+}
+
+function updateWindfall(id, field, val){
+  const row = windfallRows.find(r=>r.id===id);
+  if(row) row[field] = val;
+}
+
+function simulateWithWindfalls(windfalls){
+  const d = DEBTS.map(x=>({...x}));
+  let months=0, totalInterest=0, totalFees=0, totalPaid=0;
+  const lumpTotal = windfalls.reduce((s,w)=>s+w.amount,0);
+  const clearance={};
+
+  while(d.some(x=>x.balance>0.01) && months<120){
+    months++;
+    // Apply windfalls this month
+    windfalls.filter(w=>w.month===months).forEach(w=>{
+      const debt=d.find(x=>x.name===w.account);
+      if(debt){debt.balance=Math.max(0,debt.balance-w.amount);totalPaid+=w.amount;}
+    });
+    const remaining=[1820];
+    d.forEach(debt=>{
+      if(debt.balance<=0)return;
+      const interest=debt.balance*(debt.rate/100/12);
+      const fee=debt.name==="Incredible Connection"?60:0;
+      totalInterest+=interest;totalFees+=fee;
+      debt.balance+=interest+fee;
+      const pmt=Math.min(debt.minPmt,debt.balance);
+      debt.balance-=pmt;if(debt.balance<0)debt.balance=0;
+      totalPaid+=pmt;
+    });
+    const sorted=[...d].sort((a,b)=>b.rate-a.rate);
+    for(const debt of sorted){
+      if(debt.balance<=0)continue;
+      const ep=Math.min(remaining[0],debt.balance);
+      debt.balance-=ep;totalPaid+=ep;remaining[0]-=ep;
+      if(remaining[0]<=0)break;
+    }
+    d.forEach(debt=>{
+      if(debt.balance<0.01){debt.balance=0;if(!clearance[debt.name])clearance[debt.name]=months;}
+    });
+  }
+  return{months,totalInterest:Math.round(totalInterest),totalFees:Math.round(totalFees),totalPaid:Math.round(totalPaid),clearance};
+}
+
+function runWindfall(){
+  const base = simulateWithWindfalls([]);
+  const result = simulateWithWindfalls(windfallRows);
+  const monthsSaved = base.months - result.months;
+  const intSaved = base.totalInterest - result.totalInterest;
+  const feesSaved = base.totalFees - result.totalFees;
+  const totalSaved = intSaved + feesSaved;
+  const totalLump = windfallRows.reduce((s,w)=>s+w.amount,0);
+  const fmt0 = n=>"R"+Math.round(Math.abs(n)).toLocaleString("en-ZA");
+
+  const clearanceHTML = Object.entries(result.clearance)
+    .sort((a,b)=>a[1]-b[1])
+    .map(([name,month])=>{
+      const baseMonth = base.clearance[name];
+      const diff = baseMonth - month;
+      return `<div style="display:flex;justify-content:space-between;padding:9px 16px;border-bottom:1px solid var(--border);font-size:13px">
+        <span style="font-weight:500">${name}</span>
+        <span style="font-family:var(--mono);font-size:12px">
+          Month ${month}
+          ${diff>0?`<span style="color:var(--green);margin-left:6px">↑ ${diff}mo earlier</span>`:""}
+        </span>
+      </div>`;
+    }).join("");
+
+  const verdictColor = monthsSaved > 0 ? "var(--green)" : "var(--amber)";
+  const verdictBg = monthsSaved > 0 ? "#EDFBF1" : "var(--abg)";
+  const verdictBorder = monthsSaved > 0 ? "rgba(52,199,89,0.2)" : "rgba(245,158,11,0.2)";
+
+  const el = document.getElementById("windfall-results");
+  el.style.display="block";
+  el.innerHTML=`
+    <div style="background:${verdictBg};border:1px solid ${verdictBorder};border-radius:var(--radius-lg);padding:16px;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:600;color:${verdictColor};text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px">Impact of ${fmt0(totalLump)} in windfalls</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <div style="font-size:11px;color:${verdictColor};margin-bottom:3px">Debt free</div>
+          <div style="font-size:22px;font-weight:700;letter-spacing:-0.03em;color:${verdictColor}">Month ${result.months}</div>
+          <div style="font-size:12px;color:${verdictColor}">${monthsSaved>0?monthsSaved+" months earlier":"Same timeline"}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:${verdictColor};margin-bottom:3px">Total saved</div>
+          <div style="font-size:22px;font-weight:700;letter-spacing:-0.03em;color:${verdictColor}">${fmt0(totalSaved)}</div>
+          <div style="font-size:12px;color:${verdictColor}">in interest & fees</div>
+        </div>
+      </div>
+    </div>
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border)">
+        <div style="padding:12px 16px;border-right:1px solid var(--border)">
+          <div style="font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px">Without windfalls</div>
+          <div style="font-size:16px;font-weight:700;font-family:var(--mono)">Month ${base.months}</div>
+          <div style="font-size:12px;color:var(--txt3);margin-top:2px">${fmt0(base.totalInterest)} interest</div>
+        </div>
+        <div style="padding:12px 16px">
+          <div style="font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px">With windfalls</div>
+          <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--green)">Month ${result.months}</div>
+          <div style="font-size:12px;color:var(--txt3);margin-top:2px">${fmt0(result.totalInterest)} interest</div>
+        </div>
+      </div>
+      <div style="padding:10px 16px;background:var(--bg)">
+        <div style="font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px">Account clearance</div>
+        ${clearanceHTML}
+      </div>
+    </div>`;
+  el.scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 
 // ── INIT ──
