@@ -964,13 +964,12 @@ function logSpend(){
   const isCredit=type==="credit";
   const entry={id:S.nextId++,date:today.getDate()+"/"+(today.getMonth()+1),desc,amt,cat,isCredit};
   S.logged.unshift(entry);
-  if(!isCredit) S.actual[cat]=(S.actual[cat]||0)+amt;
   saveState();
   document.getElementById("log-amt").value="";
   document.getElementById("log-desc").value="";
   showToast(fmt(amt)+" logged");
   const c=S.cats.find(x=>x.name===cat);
-  if(c&&c.budget>0&&(S.actual[cat]||0)>c.budget) setTimeout(()=>showToast(cat+" is over budget!"),1200);
+  if(c&&c.budget>0){const actual=getActual();if((actual[cat]||0)>c.budget)setTimeout(()=>showToast(cat+" is over budget!"),1200);}
   renderLogList();
   renderOverview();
 }
@@ -996,7 +995,6 @@ function deleteLog(id,e){
   const idx=S.logged.findIndex(l=>l.id===id);
   if(idx===-1)return;
   const l=S.logged[idx];
-  if(!l.isCredit) S.actual[l.cat]=Math.max((S.actual[l.cat]||0)-l.amt,0);
   S.logged.splice(idx,1);
   saveState();
   renderLogList();renderOverview();
